@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "追剧小能手",
+  "version": "0.1.0",
+  "description": "追剧小能手插件 MVP",
+  "action": {
+    "default_title": "追剧小能手",
+    "default_popup": "index.html"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "*://*.qq.com/*",
+    "*://*.iqiyi.com/*",
+    "*://*.youku.com/*",
+    "*://*.mgtv.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.qq.com/*",
+        "*://*.iqiyi.com/*",
+        "*://*.youku.com/*",
+        "*://*.mgtv.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
