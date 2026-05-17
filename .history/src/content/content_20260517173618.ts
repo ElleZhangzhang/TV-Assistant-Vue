@@ -299,7 +299,7 @@ function renderDramaSelectModal(dramas: ExtractedDrama[]) {
     `
 
     const source = document.createElement('span')
-    source.textContent = drama.source || ''
+    source.textContent = drama.source
     source.style.cssText = `
       font-size: 12px;
       color: #999;

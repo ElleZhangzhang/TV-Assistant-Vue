@@ -7,6 +7,7 @@ console.log('[Content Script] TV追剧助手已注入到页面')
 
 /** 待加入「好剧回顾」的剧集列表（与正式保存的 dramas 分开存） */
 const PENDING_DRAMAS_KEY = 'dramasToSave' as const
+const COVER_MAP_KEY = 'tv-assistant-cover-map' as const
 
 // ========== 首页判断（与 manifest 中 matches 的站点一致） ==========
 
@@ -16,6 +17,98 @@ function isKnownVideoSiteHostname(hostname: string): boolean {
     hostname.includes('mgtv.com') ||
     hostname.includes('qq.com') ||
     hostname.includes('youku.com')
+  )
+}
+
+function normalizeTargetUrl(raw: string): string | null {
+  if (!raw || raw.startsWith('javascript:')) {
+    return null
+  }
+  try {
+    const url = new URL(raw, window.location.href)
+    url.hash = ''
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+function normalizeCoverUrl(raw: string | undefined, hostname: string): string | null {
+  if (!raw) return null
+  try {
+    const url = new URL(raw, window.location.href)
+    if (hostname.includes('qq.com')) {
+      url.search = ''
+    }
+    url.hash = ''
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+function getCardSelectors(hostname: string): string | null {
+  if (hostname.includes('qq.com')) {
+    return 'div.grid_item, div.pic-trigger'
+  }
+  if (hostname.includes('iqiyi.com')) {
+    return 'li.site-piclist__item, div.pic-trigger'
+  }
+  return null
+}
+
+function findCoverFromCard(card: Element, hostname: string): string | null {
+  const img = card.querySelector('img') as HTMLImageElement | null
+  if (!img) return null
+  const raw =
+    img.getAttribute('data-src') ||
+    img.getAttribute('data-original') ||
+    img.getAttribute('data-lazy') ||
+    img.currentSrc ||
+    img.src
+  return normalizeCoverUrl(raw || undefined, hostname)
+}
+
+function findLinkFromCard(card: Element, target: Element): string | null {
+  const anchor = (target.closest('a[href]') || card.querySelector('a[href]')) as
+    | HTMLAnchorElement
+    | null
+  const href = anchor?.getAttribute('href') || ''
+  return normalizeTargetUrl(href)
+}
+
+function saveCoverMapping(targetUrl: string, coverUrl: string): void {
+  try {
+    const raw = sessionStorage.getItem(COVER_MAP_KEY)
+    const map = raw ? (JSON.parse(raw) as Record<string, string>) : {}
+    map[targetUrl] = coverUrl
+    sessionStorage.setItem(COVER_MAP_KEY, JSON.stringify(map))
+  } catch {
+    sessionStorage.setItem(COVER_MAP_KEY, JSON.stringify({ [targetUrl]: coverUrl }))
+  }
+}
+
+function setupCoverCaptureForListPages(): void {
+  const { hostname } = window.location
+  const selectors = getCardSelectors(hostname)
+  if (!selectors) return
+
+  document.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target as Element | null
+      if (!target) return
+      const card = target.closest(selectors)
+      if (!card) return
+
+      const link = findLinkFromCard(card, target)
+      if (!link) return
+      const cover = findCoverFromCard(card, hostname)
+      if (!cover) return
+
+      saveCoverMapping(link, cover)
+    },
+    true
   )
 }
 
@@ -374,7 +467,7 @@ function renderDramaSelectModal(dramas: ExtractedDrama[]) {
   cancelBtn.addEventListener('click', () => {
     modal.remove()
     selectionDialogShown = false
-    clearDramasFromStorage()
+    clearDramasFromStorage() // 清空待处理剧，避免用户取消后下次打开首页又看到同样的剧集（用户取消即表示不想加入回顾了）
     dramasToSave.clear()
     console.log('[Content] 用户取消，已清空待处理列表')
   })
