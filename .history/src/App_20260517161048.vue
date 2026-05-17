@@ -67,7 +67,7 @@ function removeDrama(id: string): void {
       <div class="nav__tabs">
         <button
           class="nav__tab"
-          :class="{ 'nav__tab--active': activeTab === 'recommend' }"
+          :class="{ "nav__tab--active": activeTab === 'recommend' }"
           type="button"
           @click="activeTab = 'recommend'"
         >
@@ -75,7 +75,7 @@ function removeDrama(id: string): void {
         </button>
         <button
           class="nav__tab"
-          :class="{ 'nav__tab--active': activeTab === 'review' }"
+          :class="{ "nav__tab--active": activeTab === 'review' }"
           type="button"
           @click="activeTab = 'review'"
         >
@@ -178,7 +178,7 @@ function removeDrama(id: string): void {
 .content {
   flex: 1;
   overflow: auto;
-}
+
 .panel {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
