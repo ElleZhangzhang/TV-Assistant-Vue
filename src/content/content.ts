@@ -7,6 +7,8 @@ console.log('[Content Script] TV追剧助手已注入到页面')
 
 /** 待加入「好剧回顾」的剧集列表（与正式保存的 dramas 分开存） */
 const PENDING_DRAMAS_KEY = 'dramasToSave' as const
+/** 已加入「好剧回顾」的剧集列表 */
+const SAVED_DRAMAS_KEY = 'dramas' as const
 const COVER_MAP_KEY = 'tv-assistant-cover-map' as const
 
 // ========== 首页判断（与 manifest 中 matches 的站点一致） ==========
@@ -149,6 +151,51 @@ function filterPendingDramasForStorage(dramas: ExtractedDrama[]): ExtractedDrama
   return dramas.filter((d) => !isDramaEntryFromHomePage(d))
 }
 
+function normalizeDramaPageUrl(href: string | undefined): string | null {
+  if (!href) return null
+  try {
+    const url = new URL(href)
+    url.hash = ''
+    url.search = ''
+    return `${url.origin}${url.pathname}`
+  } catch {
+    return null
+  }
+}
+
+function buildSavedDramaKeys(saved: ExtractedDrama[]): {
+  ids: Set<string>
+  urls: Set<string>
+} {
+  const ids = new Set<string>()
+  const urls = new Set<string>()
+  for (const drama of saved) {
+    ids.add(drama.id)
+    const pageUrl = normalizeDramaPageUrl(drama.url)
+    if (pageUrl) urls.add(pageUrl)
+  }
+  return { ids, urls }
+}
+
+function isDramaAlreadyInReview(
+  drama: ExtractedDrama,
+  savedKeys: { ids: Set<string>; urls: Set<string> }
+): boolean {
+  if (savedKeys.ids.has(drama.id)) return true
+  const pageUrl = normalizeDramaPageUrl(drama.url)
+  return pageUrl !== null && savedKeys.urls.has(pageUrl)
+}
+
+/** 去掉已在「好剧回顾」中的剧集（按 id 或归一化播放页 URL 匹配） */
+function filterAlreadyInReview(
+  dramas: ExtractedDrama[],
+  saved: ExtractedDrama[]
+): ExtractedDrama[] {
+  if (saved.length === 0) return dramas
+  const savedKeys = buildSavedDramaKeys(saved)
+  return dramas.filter((d) => !isDramaAlreadyInReview(d, savedKeys))
+}
+
 // ========== 数据结构 ==========
 
 interface VideoPlaySession {
@@ -169,38 +216,41 @@ let selectionDialogShown = false
 
 // ========== Storage 工具函数 ==========
 
-function mergeDramasFromList(dramas: ExtractedDrama[]): void {
-  // 过滤出干净的数据
-  const filtered = filterPendingDramasForStorage(dramas)
+function applyPendingList(pending: ExtractedDrama[], saved: ExtractedDrama[]): boolean {
+  const withoutHomeNoise = filterPendingDramasForStorage(pending)
+  const notInReview = filterAlreadyInReview(withoutHomeNoise, saved)
 
-  // 只把干净数据给dramasToSave
   dramasToSave.clear()
-  filtered.forEach((drama) => {
+  notInReview.forEach((drama) => {
     dramasToSave.set(drama.id, drama)
   })
+
+  return notInReview.length !== pending.length
 }
 
-function loadDramasFromStorage(onLoaded?: () => void): void {
-  chrome.storage.local.get(PENDING_DRAMAS_KEY, (result) => {
-    const dramas = (result[PENDING_DRAMAS_KEY] as ExtractedDrama[] | undefined) || []
-    mergeDramasFromList(dramas)
-    console.log('[Content] 从 local 加载了', dramasToSave.size, '个有效待处理剧集')
+function loadSavedAndPending(onLoaded?: () => void): void {
+  chrome.storage.local.get([PENDING_DRAMAS_KEY, SAVED_DRAMAS_KEY], (result) => {
+    const pending = (result[PENDING_DRAMAS_KEY] as ExtractedDrama[] | undefined) || []
+    const saved = (result[SAVED_DRAMAS_KEY] as ExtractedDrama[] | undefined) || []
+    const pruned = applyPendingList(pending, saved)
+
+    if (pruned) {
+      saveDramasToStorage()
+    }
+
+    console.log('[Content] 待处理剧集', dramasToSave.size, '个（已排除好剧回顾中已有的）')
     onLoaded?.()
   })
 }
 
 function setupStorageSyncListener(): void {
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== 'local' || !changes[PENDING_DRAMAS_KEY]) {
+    if (areaName !== 'local') return
+    if (!changes[PENDING_DRAMAS_KEY] && !changes[SAVED_DRAMAS_KEY]) {
       return
     }
-    const next = changes[PENDING_DRAMAS_KEY].newValue as ExtractedDrama[] | undefined
-    if (!next || next.length === 0) {
-      dramasToSave.clear()
-      return
-    }
-    mergeDramasFromList(next)
-    console.log('[Content] storage 变更，已同步', next.length, '个待处理剧集')
+    loadSavedAndPending()
+    console.log('[Content] storage 变更，已同步待处理好剧回顾')
   })
 }
 
@@ -246,9 +296,17 @@ function startWatchingVideo(videoElement: HTMLVideoElement) {
       console.log('[Content] 用户观看时长已达 10 秒，提取剧集信息')
       const drama = extractDramaInfo()
       currentSession.drama = drama
-      dramasToSave.set(drama.id, drama)
-      saveDramasToStorage()
-      console.log('[Content] 待处理列表:', Array.from(dramasToSave.values()))
+
+      chrome.storage.local.get(SAVED_DRAMAS_KEY, (result) => {
+        const saved = (result[SAVED_DRAMAS_KEY] as ExtractedDrama[] | undefined) || []
+        if (isDramaAlreadyInReview(drama, buildSavedDramaKeys(saved))) {
+          console.log('[Content] 该剧已在好剧回顾中，不加入待处理列表')
+          return
+        }
+        dramasToSave.set(drama.id, drama)
+        saveDramasToStorage()
+        console.log('[Content] 待处理列表:', Array.from(dramasToSave.values()))
+      })
     }
 
     if (currentSession.watchTime % 60 === 0) {
@@ -431,11 +489,22 @@ function renderDramaSelectModal(dramas: ExtractedDrama[]) {
 
     console.log('[Content] 用户选择加入好剧回顾的剧:', selectedIds)
 
-    const dramasToSaveList = selectedIds
-      .map((id) => dramasToSave.get(id))
-      .filter(Boolean) as ExtractedDrama[]
+    chrome.storage.local.get(SAVED_DRAMAS_KEY, (result) => {
+      const saved = (result[SAVED_DRAMAS_KEY] as ExtractedDrama[] | undefined) || []
+      const dramasToSaveList = filterAlreadyInReview(
+        selectedIds.map((id) => dramasToSave.get(id)).filter(Boolean) as ExtractedDrama[],
+        saved
+      )
 
-    chrome.runtime.sendMessage(
+      if (dramasToSaveList.length === 0) {
+        modal.remove()
+        dramasToSave.clear()
+        selectionDialogShown = false
+        clearDramasFromStorage()
+        return
+      }
+
+      chrome.runtime.sendMessage(
       {
         type: 'SAVE_DRAMAS',
         data: dramasToSaveList,
@@ -450,7 +519,8 @@ function renderDramaSelectModal(dramas: ExtractedDrama[]) {
         clearDramasFromStorage()
         console.log('[Content] 已加入好剧回顾并清空待处理存储')
       }
-    )
+      )
+    })
   })
 
   const cancelBtn = document.createElement('button')
@@ -487,22 +557,13 @@ function tryShowPendingDialogOnceOnVisit(): void {
     return
   }
 
-  chrome.storage.local.get(PENDING_DRAMAS_KEY, (result) => {
-    const raw = (result[PENDING_DRAMAS_KEY] as ExtractedDrama[] | undefined) || []
-    mergeDramasFromList(raw)
+  loadSavedAndPending(() => {
     const toShow = Array.from(dramasToSave.values())
 
     if (toShow.length === 0) {
-      if (raw.length > 0) {
-        chrome.storage.local.remove(PENDING_DRAMAS_KEY)
-        console.log('[Content] 待处理列表仅含首页误存数据，已清空')
-      }
+      clearDramasFromStorage()
+      console.log('[Content] 无待加入剧集（或均已在好剧回顾中），不弹窗')
       return
-    }
-
-    if (toShow.length !== raw.length) {
-      saveDramasToStorage()
-      console.log('[Content] 已从待处理列表移除首页误存项并写回存储')
     }
 
     requestAnimationFrame(() => {
@@ -513,7 +574,7 @@ function tryShowPendingDialogOnceOnVisit(): void {
 
 // ========== 初始化 ==========
 
-loadDramasFromStorage(() => {
+loadSavedAndPending(() => {
   setTimeout(() => tryShowPendingDialogOnceOnVisit(), 400)
 })
 
@@ -522,7 +583,7 @@ setupVideoListeners()
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    loadDramasFromStorage()
+    loadSavedAndPending()
   }
 })
 
