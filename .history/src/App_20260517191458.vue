@@ -97,35 +97,50 @@ function removeDrama(id: string): void {
         <p v-else-if="dramas.length === 0" class="panel__desc">
           还没有加入任何剧
         </p>
-        <ul v-else class="drama-grid">
-          <li v-for="drama in dramas" :key="drama.id" class="drama-card">
-            <div class="drama-card__body">
+        <ul v-else class="review-grid">
+          <li v-for="drama in dramas" :key="drama.id" class="review-card">
+            <div class="review-cover">
+              <img
+                v-if="drama.cover"
+                :src="drama.cover"
+                :alt="drama.title"
+                loading="lazy"
+              />
+              <div v-else class="review-cover__empty">暂无图片</div>
+            </div>
+            <div class="review-body">
+              <div class="review-top">
+                <div class="review-title">{{ drama.title }}</div>
+                <button
+                  class="drama-delete"
+                  type="button"
+                  aria-label="删除"
+                  title="删除"
+                  @click="removeDrama(drama.id)"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div class="review-meta">
+                <span class="review-source">{{
+                  drama.source || "未知来源"
+                }}</span>
+              </div>
               <a
                 v-if="drama.url"
-                class="drama-title"
+                class="review-action"
                 :href="drama.url"
                 target="_blank"
                 rel="noreferrer"
               >
-                {{ drama.title }}
+                立即观看
               </a>
-              <span v-else class="drama-title">{{ drama.title }}</span>
-              <span class="drama-source">{{ drama.source || "未知来源" }}</span>
             </div>
-            <button
-              class="drama-delete"
-              type="button"
-              aria-label="删除"
-              title="删除"
-              @click="removeDrama(drama.id)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path
-                  d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"
-                  fill="currentColor"
-                />
-              </svg>
-            </button>
           </li>
         </ul>
       </div>
@@ -207,40 +222,69 @@ function removeDrama(id: string): void {
   color: #9ca3af;
 }
 
-.drama-grid {
+.review-grid {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  font-size: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
-.drama-card {
+.review-card {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 20px;
+  gap: 10px;
+  background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  background: #ffffff;
-  color: #1f2937;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  padding: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
-.drama-card__body {
+.review-cover {
+  width: 84px;
+  height: 84px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+
+.review-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.review-cover__empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.review-body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  flex: 1;
   min-width: 0;
 }
 
-.drama-title {
-  color: #1f2937;
-  text-decoration: none;
+.review-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.review-title {
+  font-size: 13px;
   font-weight: 600;
+  color: #1f2937;
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -248,13 +292,30 @@ function removeDrama(id: string): void {
   overflow: hidden;
 }
 
-.drama-title:hover {
-  text-decoration: underline;
+.review-meta {
+  font-size: 11px;
+  color: #9ca3af;
 }
 
-.drama-source {
-  color: #9ca3af;
-  font-size: 11px;
+.review-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-action {
+  align-self: flex-end;
+  font-size: 12px;
+  color: #0f766e;
+  background: #e6fffb;
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+  padding: 4px 10px;
+  text-decoration: none;
+}
+
+.review-action:hover {
+  background: #ccfbf1;
 }
 
 .drama-delete {

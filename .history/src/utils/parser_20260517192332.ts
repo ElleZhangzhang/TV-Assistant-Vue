@@ -24,24 +24,6 @@ function getNormalizedPageUrl(): string {
   return url.toString()
 }
 
-function getCoverFromSessionStorage(): string | undefined {
-  try {
-    const raw = sessionStorage.getItem('tv-assistant-cover-map')
-    if (!raw) return undefined
-    const map = JSON.parse(raw) as Record<string, string>
-    const key = getNormalizedPageUrl()
-    const cover = map[key]
-    if (cover) {
-      delete map[key]
-      sessionStorage.setItem('tv-assistant-cover-map', JSON.stringify(map))
-      return cover
-    }
-  } catch {
-    return undefined
-  }
-  return undefined
-}
-
 function normalizeUrl(raw: string | undefined): string | undefined {
   if (!raw) return undefined
   try {
@@ -64,6 +46,24 @@ function normalizeImageValue(value: unknown): string | undefined {
   if (typeof value === 'object' && value !== null) {
     const url = (value as { url?: unknown }).url
     if (typeof url === 'string') return normalizeUrl(url)
+  }
+  return undefined
+}
+
+function getCoverFromSessionStorage(): string | undefined {
+  try {
+    const raw = sessionStorage.getItem('tv-assistant-cover-map')
+    if (!raw) return undefined
+    const map = JSON.parse(raw) as Record<string, string>
+    const key = getNormalizedPageUrl()
+    const cover = map[key]
+    if (cover) {
+      delete map[key]
+      sessionStorage.setItem('tv-assistant-cover-map', JSON.stringify(map))
+      return cover
+    }
+  } catch {
+    return undefined
   }
   return undefined
 }

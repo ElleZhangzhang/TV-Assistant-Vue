@@ -26,6 +26,7 @@ function normalizeTargetUrl(raw: string): string | null {
   }
   try {
     const url = new URL(raw, window.location.href)
+    url.search = ''
     url.hash = ''
     return url.toString()
   } catch {
@@ -467,7 +468,7 @@ function renderDramaSelectModal(dramas: ExtractedDrama[]) {
   cancelBtn.addEventListener('click', () => {
     modal.remove()
     selectionDialogShown = false
-    clearDramasFromStorage() // 清空待处理剧，避免用户取消后下次打开首页又看到同样的剧集（用户取消即表示不想加入回顾了）
+    clearDramasFromStorage()
     dramasToSave.clear()
     console.log('[Content] 用户取消，已清空待处理列表')
   })
@@ -519,6 +520,7 @@ loadDramasFromStorage(() => {
 
 setupStorageSyncListener()
 setupVideoListeners()
+setupCoverCaptureForListPages()
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {

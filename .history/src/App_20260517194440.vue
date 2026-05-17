@@ -97,9 +97,18 @@ function removeDrama(id: string): void {
         <p v-else-if="dramas.length === 0" class="panel__desc">
           还没有加入任何剧
         </p>
-        <ul v-else class="drama-grid">
-          <li v-for="drama in dramas" :key="drama.id" class="drama-card">
-            <div class="drama-card__body">
+        <ul v-else class="drama-list">
+          <li v-for="drama in dramas" :key="drama.id" class="drama-item">
+            <div class="drama-cover">
+              <img
+                v-if="drama.cover"
+                :src="drama.cover"
+                :alt="drama.title"
+                loading="lazy"
+              />
+              <div v-else class="drama-cover__empty">暂无图片</div>
+            </div>
+            <div class="drama-info">
               <a
                 v-if="drama.url"
                 class="drama-title"
@@ -207,39 +216,69 @@ function removeDrama(id: string): void {
   color: #9ca3af;
 }
 
-.drama-grid {
+.drama-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  font-size: 16px;
-}
-
-.drama-card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #1f2937;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-}
-
-.drama-card__body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.drama-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #1f2937;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.drama-cover {
+  width: 72px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.drama-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.drama-cover__empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 11px;
+  text-align: center;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+.drama-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
   min-width: 0;
 }
 
 .drama-title {
   color: #1f2937;
   text-decoration: none;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.3;
   display: -webkit-box;

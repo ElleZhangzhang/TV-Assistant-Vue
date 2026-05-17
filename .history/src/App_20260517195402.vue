@@ -212,7 +212,7 @@ function removeDrama(id: string): void {
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   font-size: 16px;
 }

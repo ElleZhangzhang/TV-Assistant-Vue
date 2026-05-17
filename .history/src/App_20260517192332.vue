@@ -97,21 +97,18 @@ function removeDrama(id: string): void {
         <p v-else-if="dramas.length === 0" class="panel__desc">
           还没有加入任何剧
         </p>
-        <ul v-else class="drama-grid">
-          <li v-for="drama in dramas" :key="drama.id" class="drama-card">
-            <div class="drama-card__body">
-              <a
-                v-if="drama.url"
-                class="drama-title"
-                :href="drama.url"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {{ drama.title }}
-              </a>
-              <span v-else class="drama-title">{{ drama.title }}</span>
-              <span class="drama-source">{{ drama.source || "未知来源" }}</span>
-            </div>
+        <ul v-else class="drama-list">
+          <li v-for="drama in dramas" :key="drama.id" class="drama-item">
+            <a
+              v-if="drama.url"
+              :href="drama.url"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {{ drama.title }}
+            </a>
+            <span v-else>{{ drama.title }}</span>
+            <span class="drama-source">{{ drama.source || "未知来源" }}</span>
             <button
               class="drama-delete"
               type="button"
@@ -207,48 +204,30 @@ function removeDrama(id: string): void {
   color: #9ca3af;
 }
 
-.drama-grid {
+.drama-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  font-size: 16px;
-}
-
-.drama-card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #1f2937;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-}
-
-.drama-card__body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  gap: 6px;
+  font-size: 12px;
 }
 
-.drama-title {
+.drama-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1f2937;
+}
+
+.drama-item a {
   color: #1f2937;
   text-decoration: none;
-  font-weight: 600;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  flex: 1;
 }
 
-.drama-title:hover {
+.drama-item a:hover {
   text-decoration: underline;
 }
 
